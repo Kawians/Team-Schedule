@@ -4,10 +4,10 @@ import numpy as np
 
 # Define shift structure & break rules
 shifts = {
-    "Toronto (8 AM - 4 PM)": {"start": 8, "end": 16, "break_slots": [(9.5, 10.5), (13.5, 14.5)], "lunch_range": (11.5, 13)},
-    "Toronto (10 AM - 6 PM)": {"start": 10, "end": 18, "break_slots": [(11, 12), (15, 16)], "lunch_range": (12.5, 14)},
-    "Bogotá (7 AM - 4:30 PM)": {"start": 7, "end": 16.5, "break_slots": [(9, 10)], "lunch_range": (11.5, 13.5)},
-    "Bogotá (8:30 AM - 6 PM)": {"start": 8.5, "end": 18, "break_slots": [(10, 11)], "lunch_range": (12, 14)}
+    "Toronto (8 AM - 4 PM)": {"start": 8, "end": 16, "break_slots": [(9.5, 9.75), (13.5, 13.75)], "lunch_range": (11.5, 13)},
+    "Toronto (10 AM - 6 PM)": {"start": 10, "end": 18, "break_slots": [(11, 11.25), (15, 15.25)], "lunch_range": (12.5, 14)},
+    "Bogotá (7 AM - 4:30 PM)": {"start": 7, "end": 16.5, "break_slots": [(9, 9.5)], "lunch_range": (11.5, 13.5)},
+    "Bogotá (8:30 AM - 6 PM)": {"start": 8.5, "end": 18, "break_slots": [(10, 10.5)], "lunch_range": (12, 14)}
 }
 
 # Peak hours
@@ -33,14 +33,14 @@ if st.sidebar.button("Generate Schedule"):
         break_intervals = []
         for slot_start, slot_end in break_slots:
             break_times = np.linspace(slot_start, slot_end, num_employees)
-            break_intervals.append([round(b, 1) for b in break_times])
+            break_intervals.append([round(b, 2) for b in break_times])
 
         lunch_intervals = np.linspace(lunch_start, lunch_end, num_employees)
         lunch_intervals = [round(l, 1) for l in lunch_intervals]
 
         for i in range(num_employees):
-            assigned_breaks = [f"{break_intervals[j][i]} - {break_intervals[j][i] + 0.5}" for j in range(len(break_slots))]
-            assigned_lunch = f"{lunch_intervals[i]} - {lunch_intervals[i] + 0.5}"
+            assigned_breaks = [f"{break_intervals[j][i]} - {round(break_intervals[j][i] + 0.25, 2)}" for j in range(len(break_slots))]
+            assigned_lunch = f"{lunch_intervals[i]} - {round(lunch_intervals[i] + 0.5, 1)}"
 
             schedule_data.append([
                 shift, f"Employee {i+1}", shift_info["start"], shift_info["end"],
@@ -82,7 +82,7 @@ if "df_schedule" in st.session_state:
             f"{df_schedule.at[i, 'Employee']} ({df_schedule.at[i, 'Shift']}) Lunch Time",
             min_value=float(lunch_start), max_value=float(lunch_end - 0.5), step=0.5, value=float(lunch_time)
         )
-        df_schedule.at[i, "Lunch"] = f"{new_lunch_time} - {new_lunch_time + 0.5}"
+        df_schedule.at[i, "Lunch"] = f"{new_lunch_time} - {round(new_lunch_time + 0.5, 1)}"
 
     # Display final schedule
     st.subheader("Final Schedule with Adjustments")

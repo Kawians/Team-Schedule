@@ -59,21 +59,21 @@ if "df_schedule" in st.session_state:
         # Shift timing sliders
         df_schedule.at[i, "Start Time"] = st.slider(
             f"{df_schedule.at[i, 'Employee']} ({df_schedule.at[i, 'Shift']}) Start Time",
-            min_value=min_start, max_value=max_end - 1, step=0.5, value=df_schedule.at[i, "Start Time"]
-        )
+            min_value=float(min_start), max_value=float(max_end - 1), step=0.5, value=float(df_schedule.at[i, "Start Time"])
+            )
 
         df_schedule.at[i, "End Time"] = st.slider(
             f"{df_schedule.at[i, 'Employee']} ({df_schedule.at[i, 'Shift']}) End Time",
-            min_value=df_schedule.at[i, "Start Time"] + 1,
-            max_value=max_end, step=0.5, value=df_schedule.at[i, "End Time"]
-        )
+            min_value=float(df_schedule.at[i, "Start Time"] + 1),
+            max_value=float(max_end), step=0.5, value=float(df_schedule.at[i, "End Time"])
+            )
 
         # Lunch adjustment slider
         lunch_time = float(df_schedule.at[i, "Lunch"].split("-")[0].strip().replace(":00", ""))
         new_lunch_time = st.slider(
             f"{df_schedule.at[i, 'Employee']} ({df_schedule.at[i, 'Shift']}) Lunch Time",
-            min_value=lunch_start, max_value=lunch_end - 0.5, step=0.5, value=lunch_time
-        )
+            min_value=float(lunch_start), max_value=float(lunch_end - 0.5), step=0.5, value=float(lunch_time)
+            )
         df_schedule.at[i, "Lunch"] = f"{new_lunch_time}:00 - {new_lunch_time + 0.5}:00"
 
     # Display final schedule

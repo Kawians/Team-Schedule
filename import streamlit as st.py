@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import plotly.express as px
 
 # Define shift structure & break rules
 shifts = {
@@ -9,9 +10,6 @@ shifts = {
     "Bogotá (7 AM - 4:30 PM)": {"start": 7, "end": 16.5, "break_slots": [(9, 9.5)], "lunch_range": (11.5, 13.5)},
     "Bogotá (8:30 AM - 6 PM)": {"start": 8.5, "end": 18, "break_slots": [(10, 10.5)], "lunch_range": (12, 14)}
 }
-
-# Peak hours
-peak_hours = [(10.5, 12.5), (14.5, 16.5)]
 
 # Sidebar input
 st.sidebar.header("Step 1: Enter Employees Per Shift")
@@ -59,34 +57,62 @@ if "df_schedule" in st.session_state:
 
     df_schedule = st.session_state.df_schedule
 
+    adjusted_data = []
     for i in range(len(df_schedule)):
         shift_info = shifts[df_schedule.at[i, "Shift"]]
         min_start, max_end = shift_info["start"], shift_info["end"]
         lunch_start, lunch_end = shift_info["lunch_range"]
 
-        # Shift timing sliders
-        df_schedule.at[i, "Start Time"] = st.slider(
-            f"{df_schedule.at[i, 'Employee']} ({df_schedule.at[i, 'Shift']}) Start Time",
-            min_value=float(min_start), max_value=float(max_end - 1), step=0.5, value=float(df_schedule.at[i, "Start Time"])
-        )
+        col1, col2, col3 = st.columns(3)
 
-        df_schedule.at[i, "End Time"] = st.slider(
-            f"{df_schedule.at[i, 'Employee']} ({df_schedule.at[i, 'Shift']}) End Time",
-            min_value=float(df_schedule.at[i, "Start Time"] + 1),
-            max_value=float(max_end), step=0.5, value=float(df_schedule.at[i, "End Time"])
-        )
+        # Shift timing sliders on one row
+        with col1:
+            df_schedule.at[i, "Start Time"] = st.slider(
+                f"Start ({df_schedule.at[i, 'Employee']})",
+                min_value=float(min_start), max_value=float(max_end - 1), step=0.5, value=float(df_schedule.at[i, "Start Time"])
+            )
 
-        # Lunch adjustment slider
-        lunch_time = float(df_schedule.at[i, "Lunch"].split("-")[0].strip())
-        new_lunch_time = st.slider(
-            f"{df_schedule.at[i, 'Employee']} ({df_schedule.at[i, 'Shift']}) Lunch Time",
-            min_value=float(lunch_start), max_value=float(lunch_end - 0.5), step=0.5, value=float(lunch_time)
-        )
-        df_schedule.at[i, "Lunch"] = f"{new_lunch_time} - {round(new_lunch_time + 0.5, 1)}"
+        with col2:
+            df_schedule.at[i, "End Time"] = st.slider(
+                f"End ({df_schedule.at[i, 'Employee']})",
+                min_value=float(df_schedule.at[i, "Start Time"] + 1),
+                max_value=float(max_end), step=0.5, value=float(df_schedule.at[i, "End Time"])
+            )
+
+        with col3:
+            lunch_time = float(df_schedule.at[i, "Lunch"].split("-")[0].strip())
+            new_lunch_time = st.slider(
+                f"Lunch ({df_schedule.at[i, 'Employee']})",
+                min_value=float(lunch_start), max_value=float(lunch_end - 0.5), step=0.5, value=float(lunch_time)
+            )
+            df_schedule.at[i, "Lunch"] = f"{new_lunch_time} - {round(new_lunch_time + 0.5, 1)}"
+
+        adjusted_data.append([
+            df_schedule.at[i, "Shift"],
+            df_schedule.at[i, "Employee"],
+            df_schedule.at[i, "Start Time"],
+            df_schedule.at[i, "End Time"],
+            df_schedule.at[i, "Lunch"]
+        ])
 
     # Display final schedule
     st.subheader("Final Schedule with Adjustments")
     st.write(df_schedule)
+
+    # Create Gantt chart data
+    gantt_data = []
+    for _, row in df_schedule.iterrows():
+        gantt_data.append(dict(Task=row["Employee"], Start=row["Start Time"], Finish=row["End Time"], Shift=row["Shift"]))
+
+    gantt_df = pd.DataFrame(gantt_data)
+
+    # Create Gantt Chart
+    fig = px.timeline(gantt_df, x_start="Start", x_end="Finish", y="Task", color="Shift", title="Weekly Shift Plan")
+    fig.update_yaxes(categoryorder="total ascending")  # Sort by time
+    fig.update_layout(xaxis_title="Time", yaxis_title="Employees", showlegend=True)
+
+    st.subheader("Weekly Plan Visualization")
+    st.plotly_chart(fig, use_container_width=True)
 
     # Export updated schedule as Excel
     excel_file = "updated_schedule.xlsx"

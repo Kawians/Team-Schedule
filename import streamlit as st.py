@@ -5,10 +5,10 @@ import plotly.express as px
 
 # Define shift structure & break rules
 shifts = {
-    "Toronto (8 AM - 4 PM)": {"start": 8, "end": 16, "break_slots": [(9.5, 9.75), (13.5, 13.75)], "lunch_range": (11.5, 13)},
-    "Toronto (10 AM - 6 PM)": {"start": 10, "end": 18, "break_slots": [(11, 11.25), (15, 15.25)], "lunch_range": (12.5, 14)},
-    "Bogotá (7 AM - 4:30 PM)": {"start": 7, "end": 16.5, "break_slots": [(9, 9.5)], "lunch_range": (11.5, 13.5)},
-    "Bogotá (8:30 AM - 6 PM)": {"start": 8.5, "end": 18, "break_slots": [(10, 10.5)], "lunch_range": (12, 14)}
+    "Toronto (8 AM - 4 PM)": {"default_start": 8, "default_end": 16, "adjustable_range": (8, 18), "break_slots": [(9.5, 9.75), (13.5, 13.75)], "lunch_range": (11.5, 13)},
+    "Toronto (10 AM - 6 PM)": {"default_start": 10, "default_end": 18, "adjustable_range": (8, 18), "break_slots": [(11, 11.25), (15, 15.25)], "lunch_range": (12.5, 14)},
+    "Bogotá (7 AM - 4:30 PM)": {"default_start": 7, "default_end": 16.5, "adjustable_range": (7, 18), "break_slots": [(9, 9.5)], "lunch_range": (11.5, 13.5)},
+    "Bogotá (8:30 AM - 6 PM)": {"default_start": 8.5, "default_end": 18, "adjustable_range": (7, 18), "break_slots": [(10, 10.5)], "lunch_range": (12, 14)}
 }
 
 # Sidebar input
@@ -41,7 +41,7 @@ if st.sidebar.button("Generate Schedule"):
             assigned_lunch = f"{lunch_intervals[i]} - {round(lunch_intervals[i] + 0.5, 1)}"
 
             schedule_data.append([
-                shift, f"Employee {i+1}", shift_info["start"], shift_info["end"],
+                shift, f"Employee {i+1}", shift_info["default_start"], shift_info["default_end"],
                 ", ".join(assigned_breaks), assigned_lunch
             ])
 
@@ -60,7 +60,7 @@ if "df_schedule" in st.session_state:
     adjusted_data = []
     for i in range(len(df_schedule)):
         shift_info = shifts[df_schedule.at[i, "Shift"]]
-        min_start, max_end = shift_info["start"], shift_info["end"]
+        min_start, max_end = shift_info["adjustable_range"]  # Allow wider adjustment range
         lunch_start, lunch_end = shift_info["lunch_range"]
 
         col1, col2, col3 = st.columns(3)
@@ -69,21 +69,23 @@ if "df_schedule" in st.session_state:
         with col1:
             df_schedule.at[i, "Start Time"] = st.slider(
                 f"Start ({df_schedule.at[i, 'Employee']})",
-                min_value=float(min_start), max_value=float(max_end - 1), step=0.5, value=float(df_schedule.at[i, "Start Time"])
+                min_value=float(min_start), max_value=float(max_end - 1), step=0.5,
+                value=float(df_schedule.at[i, "Start Time"])
             )
 
         with col2:
             df_schedule.at[i, "End Time"] = st.slider(
                 f"End ({df_schedule.at[i, 'Employee']})",
-                min_value=float(df_schedule.at[i, "Start Time"] + 1),
-                max_value=float(max_end), step=0.5, value=float(df_schedule.at[i, "End Time"])
+                min_value=float(df_schedule.at[i, "Start Time"] + 1), max_value=float(max_end), step=0.5,
+                value=float(df_schedule.at[i, "End Time"])
             )
 
         with col3:
             lunch_time = float(df_schedule.at[i, "Lunch"].split("-")[0].strip())
             new_lunch_time = st.slider(
                 f"Lunch ({df_schedule.at[i, 'Employee']})",
-                min_value=float(lunch_start), max_value=float(lunch_end - 0.5), step=0.5, value=float(lunch_time)
+                min_value=float(lunch_start), max_value=float(lunch_end - 0.5), step=0.5,
+                value=float(lunch_time)
             )
             df_schedule.at[i, "Lunch"] = f"{new_lunch_time} - {round(new_lunch_time + 0.5, 1)}"
 
@@ -106,13 +108,16 @@ if "df_schedule" in st.session_state:
 
     gantt_df = pd.DataFrame(gantt_data)
 
-    # Create Gantt Chart
-    fig = px.timeline(gantt_df, x_start="Start", x_end="Finish", y="Task", color="Shift", title="Weekly Shift Plan")
-    fig.update_yaxes(categoryorder="total ascending")  # Sort by time
-    fig.update_layout(xaxis_title="Time", yaxis_title="Employees", showlegend=True)
+    if not gantt_df.empty:  # Ensure the plot only renders if there's data
+        # Create Gantt Chart
+        fig = px.timeline(gantt_df, x_start="Start", x_end="Finish", y="Task", color="Shift", title="Weekly Shift Plan")
+        fig.update_yaxes(categoryorder="total ascending")  # Sort by time
+        fig.update_layout(xaxis_title="Time", yaxis_title="Employees", showlegend=True)
 
-    st.subheader("Weekly Plan Visualization")
-    st.plotly_chart(fig, use_container_width=True)
+        st.subheader("Weekly Plan Visualization")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.warning("No schedule data available to display.")
 
     # Export updated schedule as Excel
     excel_file = "updated_schedule.xlsx"
